@@ -12,441 +12,435 @@ import {
   SIPType
 } from '@/types/calculator';
 
-const DEFAULT_CAGR: Record<SIPType, number> = {
-  'Equity': 12,
-  'Hybrid': 10,
-  'Debt': 7
-};
-
 export const useFinanceCalculator = () => {
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [sips, setSips] = useState<SIP[]>([]);
   const [oneTimeInvestments, setOneTimeInvestments] = useState<OneTimeInvestment[]>([]);
-  const [calculationYears, setCalculationYears] = useState<number>(10);
-  const [isCalculating, setIsCalculating] = useState<boolean>(false);
-  const [result, setResult] = useState<ArbitrageResult | null>(null);
+  const [calculationResults, setCalculationResults] = useState<ArbitrageResult | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
 
   // Income management
-  const addIncome = useCallback(() => {
-    const newIncome: Income = {
-      id: uuidv4(),
-      amount: 0,
-      type: 'Salary',
-      frequency: 'Monthly'
-    };
-    setIncomes(prev => [...prev, newIncome]);
+  const addIncome = useCallback((income: Omit<Income, 'id'>) => {
+    setIncomes(prev => [...prev, { ...income, id: uuidv4() }]);
   }, []);
 
-  const updateIncome = useCallback((updatedIncome: Income) => {
-    setIncomes(prev => prev.map(income => 
-      income.id === updatedIncome.id ? updatedIncome : income
-    ));
+  const updateIncome = useCallback((id: string, income: Partial<Income>) => {
+    setIncomes(prev => prev.map(item => item.id === id ? { ...item, ...income } : item));
   }, []);
 
   const removeIncome = useCallback((id: string) => {
-    setIncomes(prev => prev.filter(income => income.id !== id));
+    setIncomes(prev => prev.filter(item => item.id !== id));
   }, []);
 
   // Loan management
-  const addLoan = useCallback(() => {
-    const newLoan: Loan = {
-      id: uuidv4(),
-      type: 'Personal',
-      principalRemaining: 0,
-      emi: 0,
-      interestType: 'Compound',
-      interestRate: 0,
-      tenureRemainingYears: 0,
-      tenureRemainingMonths: 0,
-      prepaymentAllowed: true,
-      prepaymentPenalty: 0
-    };
-    setLoans(prev => [...prev, newLoan]);
+  const addLoan = useCallback((loan: Omit<Loan, 'id'>) => {
+    setLoans(prev => [...prev, { ...loan, id: uuidv4() }]);
   }, []);
 
-  const updateLoan = useCallback((updatedLoan: Loan) => {
-    setLoans(prev => prev.map(loan => 
-      loan.id === updatedLoan.id ? updatedLoan : loan
-    ));
+  const updateLoan = useCallback((id: string, loan: Partial<Loan>) => {
+    setLoans(prev => prev.map(item => item.id === id ? { ...item, ...loan } : item));
   }, []);
 
   const removeLoan = useCallback((id: string) => {
-    setLoans(prev => prev.filter(loan => loan.id !== id));
+    setLoans(prev => prev.filter(item => item.id !== id));
   }, []);
 
   // SIP management
-  const addSip = useCallback(() => {
-    const newSip: SIP = {
-      id: uuidv4(),
-      name: '',
-      type: 'Equity',
-      monthlyAmount: 0,
-      expectedReturn: DEFAULT_CAGR['Equity'],
-      investmentHorizon: 5,
-      startDelay: 0
-    };
-    setSips(prev => [...prev, newSip]);
+  const addSip = useCallback((sip: Omit<SIP, 'id'>) => {
+    setSips(prev => [...prev, { ...sip, id: uuidv4() }]);
   }, []);
 
-  const updateSip = useCallback((updatedSip: SIP) => {
-    setSips(prev => prev.map(sip => 
-      sip.id === updatedSip.id ? updatedSip : sip
-    ));
+  const updateSip = useCallback((id: string, sip: Partial<SIP>) => {
+    setSips(prev => prev.map(item => item.id === id ? { ...item, ...sip } : item));
   }, []);
 
   const removeSip = useCallback((id: string) => {
-    setSips(prev => prev.filter(sip => sip.id !== id));
+    setSips(prev => prev.filter(item => item.id !== id));
   }, []);
 
   // One-time investment management
-  const addOneTimeInvestment = useCallback(() => {
-    const newInvestment: OneTimeInvestment = {
-      id: uuidv4(),
-      name: '',
-      amount: 0,
-      date: new Date(),
-      autoApply: true
-    };
-    setOneTimeInvestments(prev => [...prev, newInvestment]);
+  const addOneTimeInvestment = useCallback((investment: Omit<OneTimeInvestment, 'id'>) => {
+    setOneTimeInvestments(prev => [...prev, { ...investment, id: uuidv4() }]);
   }, []);
 
-  const updateOneTimeInvestment = useCallback((updatedInvestment: OneTimeInvestment) => {
-    setOneTimeInvestments(prev => prev.map(investment => 
-      investment.id === updatedInvestment.id ? updatedInvestment : investment
-    ));
+  const updateOneTimeInvestment = useCallback((id: string, investment: Partial<OneTimeInvestment>) => {
+    setOneTimeInvestments(prev => prev.map(item => item.id === id ? { ...item, ...investment } : item));
   }, []);
 
   const removeOneTimeInvestment = useCallback((id: string) => {
-    setOneTimeInvestments(prev => prev.filter(investment => investment.id !== id));
+    setOneTimeInvestments(prev => prev.filter(item => item.id !== id));
+  }, []);
+
+  // AI-based suggestions
+  const suggestSipReturn = useCallback((type: SIPType): number => {
+    // Historical average returns based on SIP type
+    switch (type) {
+      case 'Equity':
+        return 12; // 12% average for equity
+      case 'Hybrid':
+        return 9; // 9% average for hybrid
+      case 'Debt':
+        return 7; // 7% average for debt
+      default:
+        return 10; // Default return
+    }
+  }, []);
+
+  // Calculate the effective interest rate for a loan
+  const calculateEffectiveInterestRate = useCallback((loan: Loan): number => {
+    if (loan.interestType === 'Simple') {
+      return loan.interestRate;
+    } else {
+      // For compound interest, calculate the effective annual rate
+      return Math.pow(1 + loan.interestRate / 100 / 12, 12) - 1;
+    }
   }, []);
 
   // Calculate monthly income
-  const calculateMonthlyIncome = useCallback(() => {
+  const calculateMonthlyIncome = useMemo(() => {
     return incomes.reduce((total, income) => {
       if (income.frequency === 'Monthly') {
         return total + income.amount;
       } else if (income.frequency === 'Quarterly') {
         return total + (income.amount / 3);
       } else if (income.frequency === 'One-time') {
-        return total + (income.amount / 12); // Spread over a year
+        // Spread one-time income over 12 months for calculation purposes
+        return total + (income.amount / 12);
       }
       return total;
     }, 0);
   }, [incomes]);
 
   // Calculate total EMI
-  const calculateTotalEMI = useCallback(() => {
+  const calculateTotalEMI = useMemo(() => {
     return loans.reduce((total, loan) => total + loan.emi, 0);
   }, [loans]);
 
   // Calculate total SIP
-  const calculateTotalSIP = useCallback(() => {
+  const calculateTotalSIP = useMemo(() => {
     return sips.reduce((total, sip) => total + sip.monthlyAmount, 0);
   }, [sips]);
 
   // Calculate monthly surplus
-  const calculateMonthlySurplus = useCallback(() => {
-    const monthlyIncome = calculateMonthlyIncome();
-    const totalEMI = calculateTotalEMI();
-    const totalSIP = calculateTotalSIP();
-    return monthlyIncome - totalEMI - totalSIP;
+  const calculateMonthlySurplus = useMemo(() => {
+    return calculateMonthlyIncome - calculateTotalEMI - calculateTotalSIP;
   }, [calculateMonthlyIncome, calculateTotalEMI, calculateTotalSIP]);
 
-  // Calculate SIP corpus after n years
-  const calculateSIPCorpus = useCallback((sip: SIP, years: number) => {
-    const monthlyRate = sip.expectedReturn / 100 / 12;
-    const totalMonths = years * 12 - sip.startDelay;
-    
-    if (totalMonths <= 0) return 0;
-    
-    // SIP formula: P * ((1 + r)^n - 1) / r * (1 + r)
-    return sip.monthlyAmount * 
-      ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate) * 
-      (1 + monthlyRate);
-  }, []);
+  // Calculate arbitrage score (higher score means investing is better than loan repayment)
+  const calculateArbitrageScore = useCallback((): number => {
+    if (loans.length === 0 || sips.length === 0) return 0;
 
-  // Calculate loan balance after n years
-  const calculateLoanBalance = useCallback((loan: Loan, years: number) => {
-    const totalMonths = loan.tenureRemainingYears * 12 + loan.tenureRemainingMonths;
-    const monthsAfterNYears = years * 12;
-    
-    if (monthsAfterNYears >= totalMonths) return 0;
-    
-    if (loan.interestType === 'Simple') {
-      // Simple interest calculation
-      const monthlyPayment = loan.emi;
-      const monthlyInterestRate = loan.interestRate / 100 / 12;
-      const principalPaidMonthly = monthlyPayment - (loan.principalRemaining * monthlyInterestRate);
-      const principalPaid = principalPaidMonthly * monthsAfterNYears;
-      return Math.max(0, loan.principalRemaining - principalPaid);
-    } else {
-      // Compound interest calculation (standard EMI formula)
-      const monthlyInterestRate = loan.interestRate / 100 / 12;
-      const remainingMonths = totalMonths - monthsAfterNYears;
-      
-      // Calculate remaining balance: P * (1+r)^n - (EMI * ((1+r)^n - 1) / r)
-      return loan.principalRemaining * Math.pow(1 + monthlyInterestRate, monthsAfterNYears) - 
-        (loan.emi * ((Math.pow(1 + monthlyInterestRate, monthsAfterNYears) - 1) / monthlyInterestRate));
+    // Calculate weighted average loan interest rate
+    const totalLoanAmount = loans.reduce((sum, loan) => sum + loan.principalRemaining, 0);
+    const weightedLoanInterest = loans.reduce(
+      (sum, loan) => sum + (loan.principalRemaining / totalLoanAmount) * calculateEffectiveInterestRate(loan),
+      0
+    );
+
+    // Calculate weighted average SIP return
+    const totalSipAmount = sips.reduce((sum, sip) => sum + sip.monthlyAmount, 0);
+    const weightedSipReturn = sips.reduce(
+      (sum, sip) => sum + (sip.monthlyAmount / totalSipAmount) * sip.expectedReturn,
+      0
+    );
+
+    // Arbitrage score: difference between SIP returns and loan interest
+    // Positive score means investing is better, negative means loan repayment is better
+    return weightedSipReturn - weightedLoanInterest;
+  }, [loans, sips, calculateEffectiveInterestRate]);
+
+  // Generate alerts based on financial data
+  const generateAlerts = useCallback((): string[] => {
+    const alerts: string[] = [];
+
+    // Check if EMI is too high compared to income
+    const emiToIncomeRatio = calculateTotalEMI / calculateMonthlyIncome;
+    if (emiToIncomeRatio > 0.5) {
+      alerts.push(`Warning: Your EMI to income ratio is ${(emiToIncomeRatio * 100).toFixed(1)}%, which is high. Financial experts recommend keeping it below 50%.`);
     }
-  }, []);
+
+    // Check if any SIP has unrealistic return expectations
+    sips.forEach(sip => {
+      const suggestedReturn = suggestSipReturn(sip.type);
+      if (sip.expectedReturn > suggestedReturn + 3) {
+        alerts.push(`The expected return of ${sip.expectedReturn}% for ${sip.name} may be unrealistic. Historical average for ${sip.type} is around ${suggestedReturn}%.`);
+      }
+    });
+
+    // Check if monthly surplus is negative
+    if (calculateMonthlySurplus < 0) {
+      alerts.push(`Your monthly expenses (EMI + SIP) exceed your income by ₹${Math.abs(calculateMonthlySurplus).toFixed(2)}. Consider reducing expenses or increasing income.`);
+    }
+
+    return alerts;
+  }, [calculateTotalEMI, calculateMonthlyIncome, sips, calculateMonthlySurplus, suggestSipReturn]);
+
+  // Calculate optimal allocation of surplus
+  const calculateOptimalAllocation = useCallback((): OptimalAllocation[] => {
+    const allocations: OptimalAllocation[] = [];
+    
+    if (calculateMonthlySurplus <= 0) {
+      return allocations;
+    }
+
+    // Sort loans by effective interest rate (highest first)
+    const sortedLoans = [...loans].sort((a, b) => 
+      calculateEffectiveInterestRate(b) - calculateEffectiveInterestRate(a)
+    );
+
+    // Sort SIPs by expected return (highest first)
+    const sortedSips = [...sips].sort((a, b) => b.expectedReturn - a.expectedReturn);
+
+    // If highest loan interest > highest SIP return, prioritize loan repayment
+    if (sortedLoans.length > 0 && sortedSips.length > 0) {
+      const highestLoanInterest = calculateEffectiveInterestRate(sortedLoans[0]);
+      const highestSipReturn = sortedSips[0].expectedReturn;
+
+      if (highestLoanInterest > highestSipReturn) {
+        // Prioritize loan repayment
+        allocations.push({
+          loanId: sortedLoans[0].id,
+          percentage: 70,
+          reason: `This loan has a high interest rate of ${sortedLoans[0].interestRate}%, which is higher than your best investment return of ${highestSipReturn}%.`
+        });
+
+        // Allocate some to SIP for diversification
+        if (sortedSips.length > 0) {
+          allocations.push({
+            sipId: sortedSips[0].id,
+            percentage: 30,
+            reason: 'Maintaining some investment for long-term growth and diversification.'
+          });
+        }
+      } else {
+        // Prioritize investment
+        allocations.push({
+          sipId: sortedSips[0].id,
+          percentage: 70,
+          reason: `This investment has an expected return of ${highestSipReturn}%, which is higher than your highest loan interest rate of ${highestLoanInterest}%.`
+        });
+
+        // Allocate some to loan repayment
+        if (sortedLoans.length > 0) {
+          allocations.push({
+            loanId: sortedLoans[0].id,
+            percentage: 30,
+            reason: 'Allocating some funds to reduce debt burden.'
+          });
+        }
+      }
+    } else if (sortedLoans.length > 0) {
+      // Only loans, no SIPs
+      allocations.push({
+        loanId: sortedLoans[0].id,
+        percentage: 100,
+        reason: `Focus on paying off this high-interest loan (${sortedLoans[0].interestRate}%) before starting investments.`
+      });
+    } else if (sortedSips.length > 0) {
+      // Only SIPs, no loans
+      allocations.push({
+        sipId: sortedSips[0].id,
+        percentage: 100,
+        reason: 'With no loans to repay, focus on maximizing your investment returns.'
+      });
+    }
+
+    return allocations;
+  }, [loans, sips, calculateMonthlySurplus, calculateEffectiveInterestRate]);
 
   // Calculate yearly projections
   const calculateYearlyProjections = useCallback((): YearlyProjection[] => {
     const projections: YearlyProjection[] = [];
-    const monthlyIncome = calculateMonthlyIncome();
-    const totalEMI = calculateTotalEMI();
-    const totalSIP = calculateTotalSIP();
-    const monthlySurplus = calculateMonthlySurplus();
+    const maxYears = Math.max(
+      ...loans.map(loan => loan.tenureRemainingYears + loan.tenureRemainingMonths / 12),
+      ...sips.map(sip => sip.investmentHorizon)
+    );
+
+    // If no loans or SIPs, return empty projections
+    if (maxYears === 0 || (loans.length === 0 && sips.length === 0)) {
+      return projections;
+    }
+
+    // Initialize loan and SIP tracking
+    const loanBalances: Record<string, number> = {};
+    loans.forEach(loan => {
+      loanBalances[loan.id] = loan.principalRemaining;
+    });
+
+    const sipBalances: Record<string, number> = {};
+    sips.forEach(sip => {
+      sipBalances[sip.id] = 0;
+    });
+
+    // Calculate monthly surplus
+    const monthlySurplus = calculateMonthlySurplus;
     
-    for (let year = 1; year <= calculationYears; year++) {
-      const loanBalances: Record<string, number> = {};
-      let totalLoanBalance = 0;
+    // Get optimal allocation
+    const allocations = calculateOptimalAllocation();
+
+    // Project for each year
+    for (let year = 1; year <= Math.ceil(maxYears); year++) {
+      // Calculate yearly income
+      const yearlyIncome = calculateMonthlyIncome * 12;
       
-      // Calculate loan balances
-      loans.forEach(loan => {
-        const balance = calculateLoanBalance(loan, year);
-        loanBalances[loan.id] = balance;
-        totalLoanBalance += balance;
-      });
+      // Calculate yearly EMI
+      const yearlyEMI = calculateTotalEMI * 12;
       
-      const sipCorpuses: Record<string, number> = {};
-      let totalSIPCorpus = 0;
+      // Calculate yearly SIP
+      const yearlySIP = calculateTotalSIP * 12;
       
-      // Calculate SIP corpuses
-      sips.forEach(sip => {
-        const corpus = calculateSIPCorpus(sip, year);
-        sipCorpuses[sip.id] = corpus;
-        totalSIPCorpus += corpus;
-      });
-      
+      // Calculate yearly surplus
+      const yearlySurplus = monthlySurplus * 12;
+
+      // Update loan balances
+      for (const loan of loans) {
+        // Regular EMI payment
+        const yearlyInterest = loanBalances[loan.id] * (loan.interestRate / 100);
+        const yearlyPrincipalPayment = Math.min(loan.emi * 12 - yearlyInterest, loanBalances[loan.id]);
+        loanBalances[loan.id] -= yearlyPrincipalPayment;
+
+        // Additional payment from surplus based on allocation
+        const loanAllocation = allocations.find(a => a.loanId === loan.id);
+        if (loanAllocation && loanBalances[loan.id] > 0) {
+          const additionalPayment = yearlySurplus * (loanAllocation.percentage / 100);
+          loanBalances[loan.id] = Math.max(0, loanBalances[loan.id] - additionalPayment);
+        }
+
+        // Ensure balance doesn't go below zero
+        loanBalances[loan.id] = Math.max(0, loanBalances[loan.id]);
+      }
+
+      // Update SIP balances
+      for (const sip of sips) {
+        // Skip if still in delay period
+        if (year <= sip.startDelay) continue;
+
+        // Regular SIP contribution
+        const yearlyContribution = sip.monthlyAmount * 12;
+        
+        // Growth on existing balance
+        const yearlyGrowth = sipBalances[sip.id] * (sip.expectedReturn / 100);
+        
+        // Additional contribution from surplus based on allocation
+        const sipAllocation = allocations.find(a => a.sipId === sip.id);
+        const additionalContribution = sipAllocation 
+          ? yearlySurplus * (sipAllocation.percentage / 100) 
+          : 0;
+        
+        // Update balance
+        sipBalances[sip.id] += yearlyContribution + yearlyGrowth + additionalContribution;
+      }
+
       // Calculate net worth
-      const netWorth = totalSIPCorpus - totalLoanBalance;
-      
+      const totalLoans = Object.values(loanBalances).reduce((sum, balance) => sum + balance, 0);
+      const totalSips = Object.values(sipBalances).reduce((sum, balance) => sum + balance, 0);
+      const netWorth = totalSips - totalLoans;
+
+      // Add to projections
       projections.push({
         year,
-        totalIncome: monthlyIncome * 12,
-        totalEMI: totalEMI * 12,
-        totalSIP: totalSIP * 12,
-        surplus: monthlySurplus * 12,
+        totalIncome: yearlyIncome,
+        totalEMI: yearlyEMI,
+        totalSIP: yearlySIP,
+        surplus: yearlySurplus,
         netWorth,
-        loans: loanBalances,
-        sips: sipCorpuses
+        loans: { ...loanBalances },
+        sips: { ...sipBalances }
       });
     }
-    
+
     return projections;
   }, [
-    calculationYears, 
+    loans, 
+    sips, 
     calculateMonthlyIncome, 
     calculateTotalEMI, 
     calculateTotalSIP, 
     calculateMonthlySurplus, 
-    calculateLoanBalance, 
-    calculateSIPCorpus, 
-    loans, 
-    sips
+    calculateOptimalAllocation
   ]);
 
-  // Calculate optimal allocations
-  const calculateOptimalAllocations = useCallback((): OptimalAllocation[] => {
-    const allocations: OptimalAllocation[] = [];
-    const highInterestLoans = loans
-      .filter(loan => loan.prepaymentAllowed && loan.interestRate > 0)
-      .sort((a, b) => b.interestRate - a.interestRate);
-    
-    const highReturnSIPs = sips
-      .sort((a, b) => b.expectedReturn - a.expectedReturn);
-    
-    // If we have high interest loans (>10%), prioritize paying them off
-    if (highInterestLoans.length > 0 && highInterestLoans[0].interestRate > 10) {
-      allocations.push({
-        loanId: highInterestLoans[0].id,
-        percentage: 70,
-        reason: `Prioritize paying off high interest ${highInterestLoans[0].type} loan at ${highInterestLoans[0].interestRate}% first`
-      });
-      
-      // If we have high return SIPs, allocate some portion to them
-      if (highReturnSIPs.length > 0 && highReturnSIPs[0].expectedReturn > highInterestLoans[0].interestRate) {
-        allocations.push({
-          sipId: highReturnSIPs[0].id,
-          percentage: 30,
-          reason: `Allocate some portion to ${highReturnSIPs[0].type} SIP with expected return of ${highReturnSIPs[0].expectedReturn}%`
-        });
-      } else if (highReturnSIPs.length > 0) {
-        allocations.push({
-          sipId: highReturnSIPs[0].id,
-          percentage: 30,
-          reason: `Diversify with some investment in ${highReturnSIPs[0].type} SIP`
-        });
-      }
-    } 
-    // If highest loan interest is less than best SIP return, prioritize SIP
-    else if (highReturnSIPs.length > 0 && 
-             (highInterestLoans.length === 0 || 
-              highReturnSIPs[0].expectedReturn > highInterestLoans[0].interestRate + 2)) {
-      allocations.push({
-        sipId: highReturnSIPs[0].id,
-        percentage: 70,
-        reason: `Prioritize investing in ${highReturnSIPs[0].type} SIP with expected return of ${highReturnSIPs[0].expectedReturn}%`
-      });
-      
-      if (highInterestLoans.length > 0) {
-        allocations.push({
-          loanId: highInterestLoans[0].id,
-          percentage: 30,
-          reason: `Allocate some portion to paying off ${highInterestLoans[0].type} loan at ${highInterestLoans[0].interestRate}%`
-        });
-      } else if (highReturnSIPs.length > 1) {
-        allocations.push({
-          sipId: highReturnSIPs[1].id,
-          percentage: 30,
-          reason: `Diversify with some investment in ${highReturnSIPs[1].type} SIP`
-        });
-      }
-    }
-    // Balanced approach when interest rates and returns are comparable
-    else if (highInterestLoans.length > 0 && highReturnSIPs.length > 0) {
-      allocations.push({
-        loanId: highInterestLoans[0].id,
-        percentage: 50,
-        reason: `Balance between paying off ${highInterestLoans[0].type} loan at ${highInterestLoans[0].interestRate}%`
-      });
-      
-      allocations.push({
-        sipId: highReturnSIPs[0].id,
-        percentage: 50,
-        reason: `and investing in ${highReturnSIPs[0].type} SIP with expected return of ${highReturnSIPs[0].expectedReturn}%`
-      });
-    }
-    
-    return allocations;
-  }, [loans, sips]);
-
-  // Calculate arbitrage score
-  const calculateArbitrageScore = useCallback((): number => {
-    if (loans.length === 0 || sips.length === 0) return 0;
-    
-    const avgLoanInterest = loans.reduce((sum, loan) => sum + loan.interestRate, 0) / loans.length;
-    const avgSIPReturn = sips.reduce((sum, sip) => sum + sip.expectedReturn, 0) / sips.length;
-    
-    // Score is the difference between average SIP return and average loan interest
-    // Positive score means SIPs are more beneficial, negative means loan repayment is better
-    return avgSIPReturn - avgLoanInterest;
-  }, [loans, sips]);
-
-  // Generate alerts
-  const generateAlerts = useCallback((): string[] => {
-    const alerts: string[] = [];
-    const monthlySurplus = calculateMonthlySurplus();
-    
-    // Check if expenses exceed income
-    if (monthlySurplus < 0) {
-      alerts.push('Warning: Your monthly expenses exceed your income. Consider reducing EMIs or SIPs.');
-    }
-    
-    // Check for high interest loans
-    loans.forEach(loan => {
-      if (loan.interestRate > 15) {
-        alerts.push(`High interest alert: Your ${loan.type} loan has a very high interest rate of ${loan.interestRate}%. Consider refinancing.`);
-      }
-    });
-    
-    // Check for unrealistic SIP returns
-    sips.forEach(sip => {
-      if (sip.expectedReturn > 15) {
-        alerts.push(`Unrealistic return alert: Expected return of ${sip.expectedReturn}% for ${sip.name} SIP may be too optimistic.`);
-      }
-    });
-    
-    // Check loan to income ratio
-    const totalEMI = calculateTotalEMI();
-    const monthlyIncome = calculateMonthlyIncome();
-    const emiToIncomeRatio = totalEMI / monthlyIncome;
-    
-    if (emiToIncomeRatio > 0.5) {
-      alerts.push(`High EMI alert: Your EMIs constitute ${(emiToIncomeRatio * 100).toFixed(1)}% of your income, which is very high.`);
-    }
-    
-    return alerts;
-  }, [calculateMonthlySurplus, loans, sips, calculateTotalEMI, calculateMonthlyIncome]);
-
-  // Calculate results
-  const calculateResults = useCallback(() => {
+  // Run the calculation
+  const runCalculation = useCallback(() => {
     setIsCalculating(true);
     
-    try {
-      const yearlyProjections = calculateYearlyProjections();
-      const optimalAllocations = calculateOptimalAllocations();
-      const arbitrageScore = calculateArbitrageScore();
-      const alerts = generateAlerts();
-      
-      setResult({
-        yearlyProjections,
-        optimalAllocations,
-        arbitrageScore,
-        alerts
-      });
-    } catch (error) {
-      console.error('Error calculating results:', error);
-    } finally {
-      setIsCalculating(false);
-    }
+    // Simulate a delay for complex calculations
+    setTimeout(() => {
+      try {
+        const yearlyProjections = calculateYearlyProjections();
+        const optimalAllocations = calculateOptimalAllocation();
+        const arbitrageScore = calculateArbitrageScore();
+        const alerts = generateAlerts();
+
+        setCalculationResults({
+          yearlyProjections,
+          optimalAllocations,
+          arbitrageScore,
+          alerts
+        });
+      } catch (error) {
+        console.error('Calculation error:', error);
+      } finally {
+        setIsCalculating(false);
+      }
+    }, 1000);
   }, [
     calculateYearlyProjections, 
-    calculateOptimalAllocations, 
+    calculateOptimalAllocation, 
     calculateArbitrageScore, 
     generateAlerts
   ]);
 
-  // Get AI SIP suggestions based on type
-  const getAISIPSuggestion = useCallback((type: SIPType): number => {
-    return DEFAULT_CAGR[type];
-  }, []);
-
-  // Reset calculator
-  const resetCalculator = useCallback(() => {
+  // Reset all data
+  const resetAll = useCallback(() => {
     setIncomes([]);
     setLoans([]);
     setSips([]);
     setOneTimeInvestments([]);
-    setResult(null);
+    setCalculationResults(null);
   }, []);
 
-  // Summary stats
-  const summaryStats = useMemo(() => {
-    return {
-      monthlyIncome: calculateMonthlyIncome(),
-      totalEMI: calculateTotalEMI(),
-      totalSIP: calculateTotalSIP(),
-      monthlySurplus: calculateMonthlySurplus()
-    };
-  }, [calculateMonthlyIncome, calculateTotalEMI, calculateTotalSIP, calculateMonthlySurplus]);
-
   return {
+    // State
     incomes,
     loans,
     sips,
     oneTimeInvestments,
-    calculationYears,
+    calculationResults,
     isCalculating,
-    result,
-    summaryStats,
+    
+    // Income methods
     addIncome,
     updateIncome,
     removeIncome,
+    
+    // Loan methods
     addLoan,
     updateLoan,
     removeLoan,
+    
+    // SIP methods
     addSip,
     updateSip,
     removeSip,
+    
+    // One-time investment methods
     addOneTimeInvestment,
     updateOneTimeInvestment,
     removeOneTimeInvestment,
-    setCalculationYears,
-    calculateResults,
-    getAISIPSuggestion,
-    resetCalculator
+    
+    // Calculation methods
+    runCalculation,
+    resetAll,
+    
+    // Helper methods
+    suggestSipReturn,
+    
+    // Derived values
+    monthlyIncome: calculateMonthlyIncome,
+    totalEMI: calculateTotalEMI,
+    totalSIP: calculateTotalSIP,
+    monthlySurplus: calculateMonthlySurplus
   };
 };

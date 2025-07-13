@@ -1,172 +1,229 @@
 
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { OneTimeInvestment } from '@/types/calculator';
-import { Plus, Trash2 } from 'lucide-react';
-import { Label } from '@/components/ui/label';
+import { PlusCircle, Trash2, HelpCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
 
 interface OneTimeFormProps {
-  oneTimeInvestments: OneTimeInvestment[];
-  addOneTimeInvestment: () => void;
-  updateOneTimeInvestment: (investment: OneTimeInvestment) => void;
-  removeOneTimeInvestment: (id: string) => void;
+  investments: OneTimeInvestment[];
+  addInvestment: (investment: Omit<OneTimeInvestment, 'id'>) => void;
+  updateInvestment: (id: string, investment: Partial<OneTimeInvestment>) => void;
+  removeInvestment: (id: string) => void;
 }
 
 const OneTimeForm: React.FC<OneTimeFormProps> = ({ 
-  oneTimeInvestments, 
-  addOneTimeInvestment, 
-  updateOneTimeInvestment, 
-  removeOneTimeInvestment 
+  investments, 
+  addInvestment, 
+  updateInvestment, 
+  removeInvestment 
 }) => {
-  const handleNameChange = (id: string, value: string) => {
-    const investment = oneTimeInvestments.find(investment => investment.id === id);
-    if (investment) {
-      updateOneTimeInvestment({
-        ...investment,
-        name: value
-      });
-    }
-  };
+  const [name, setName] = useState<string>('');
+  const [amount, setAmount] = useState<string>('');
+  const [date, setDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [autoApply, setAutoApply] = useState<boolean>(true);
 
-  const handleAmountChange = (id: string, value: string) => {
-    const investment = oneTimeInvestments.find(investment => investment.id === id);
-    if (investment) {
-      updateOneTimeInvestment({
-        ...investment,
-        amount: parseFloat(value) || 0
-      });
-    }
-  };
-
-  const handleDateChange = (id: string, date: Date | undefined) => {
-    if (!date) return;
+  const handleAddInvestment = () => {
+    if (
+      !name || 
+      !amount || 
+      !date ||
+      isNaN(Number(amount))
+    ) return;
     
-    const investment = oneTimeInvestments.find(investment => investment.id === id);
-    if (investment) {
-      updateOneTimeInvestment({
-        ...investment,
-        date
-      });
-    }
-  };
-
-  const handleAutoApplyChange = (id: string, value: boolean) => {
-    const investment = oneTimeInvestments.find(investment => investment.id === id);
-    if (investment) {
-      updateOneTimeInvestment({
-        ...investment,
-        autoApply: value
-      });
-    }
+    addInvestment({
+      name,
+      amount: Number(amount),
+      date: new Date(date),
+      autoApply
+    });
+    
+    // Reset form
+    setName('');
+    setAmount('');
+    setDate(format(new Date(), 'yyyy-MM-dd'));
+    setAutoApply(true);
   };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>One-Time Investments/Income</CardTitle>
-        <CardDescription>
-          Add one-time investments or income like FD maturity, bonus, etc.
-        </CardDescription>
+        <CardDescription>Add expected one-time investments or income</CardDescription>
       </CardHeader>
-      <CardContent>
-        {oneTimeInvestments.length === 0 ? (
-          <div className="text-center py-6">
-            <p className="text-muted-foreground mb-4">No one-time investments added yet</p>
-            <Button onClick={addOneTimeInvestment}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add One-Time Investment
-            </Button>
-          </div>
-        ) : (
-          <>
-            {oneTimeInvestments.map((investment) => (
-              <div key={investment.id} className="mb-8 border rounded-lg p-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div>
-                    <Label htmlFor={`investment-name-${investment.id}`}>Name</Label>
-                    <Input
-                      id={`investment-name-${investment.id}`}
-                      placeholder="e.g., FD Maturity, Bonus"
-                      value={investment.name}
-                      onChange={(e) => handleNameChange(investment.id, e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`investment-amount-${investment.id}`}>Amount (₹)</Label>
-                    <Input
-                      id={`investment-amount-${investment.id}`}
-                      type="number"
-                      placeholder="Amount"
-                      value={investment.amount || ''}
-                      onChange={(e) => handleAmountChange(investment.id, e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`investment-date-${investment.id}`}>Date</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          id={`investment-date-${investment.id}`}
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !investment.date && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {investment.date ? format(investment.date, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={investment.date}
-                          onSelect={(date) => handleDateChange(investment.id, date)}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2 mb-4">
-                  <Switch
-                    id={`investment-auto-apply-${investment.id}`}
-                    checked={investment.autoApply}
-                    onCheckedChange={(checked) => handleAutoApplyChange(investment.id, checked)}
+      
+      <CardContent className="space-y-6">
+        {/* Investment list */}
+        {investments.length > 0 ? (
+          <div className="space-y-4">
+            {investments.map((investment) => (
+              <div key={investment.id} className="flex flex-col md:flex-row gap-4 p-4 border rounded-md">
+                <div className="flex-1">
+                  <Label htmlFor={`name-${investment.id}`}>Name</Label>
+                  <Input
+                    id={`name-${investment.id}`}
+                    value={investment.name}
+                    onChange={(e) => updateInvestment(investment.id, { name: e.target.value })}
+                    className="mt-1"
                   />
-                  <Label htmlFor={`investment-auto-apply-${investment.id}`}>
-                    Auto apply (distribute automatically)
-                  </Label>
                 </div>
-
-                <div className="flex justify-end">
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => removeOneTimeInvestment(investment.id)}
+                
+                <div className="flex-1">
+                  <Label htmlFor={`amount-${investment.id}`}>Amount (₹)</Label>
+                  <Input
+                    id={`amount-${investment.id}`}
+                    type="number"
+                    value={investment.amount}
+                    onChange={(e) => updateInvestment(investment.id, { amount: Number(e.target.value) })}
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div className="flex-1">
+                  <Label htmlFor={`date-${investment.id}`}>Expected Date</Label>
+                  <Input
+                    id={`date-${investment.id}`}
+                    type="date"
+                    value={format(new Date(investment.date), 'yyyy-MM-dd')}
+                    onChange={(e) => updateInvestment(investment.id, { date: new Date(e.target.value) })}
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor={`autoApply-${investment.id}`}>Auto Apply</Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Automatically apply to best loan/investment</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Switch
+                      id={`autoApply-${investment.id}`}
+                      checked={investment.autoApply}
+                      onCheckedChange={(checked) => updateInvestment(investment.id, { autoApply: checked })}
+                    />
+                    <Label htmlFor={`autoApply-${investment.id}`}>
+                      {investment.autoApply ? 'Yes' : 'No'}
+                    </Label>
+                  </div>
+                </div>
+                
+                <div className="flex items-end">
+                  <Button 
+                    variant="destructive" 
+                    size="icon" 
+                    onClick={() => removeInvestment(investment.id)}
+                    className="mt-1"
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Remove
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             ))}
-            <Button onClick={addOneTimeInvestment}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Another One-Time Investment
-            </Button>
-          </>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            No one-time investments added yet. Add your first one-time investment below.
+          </div>
         )}
+        
+        {/* Add new investment form */}
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-medium mb-4">Add New One-Time Investment/Income</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                placeholder="e.g., FD Maturity, Bonus"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="amount">Amount (₹)</Label>
+              <Input
+                id="amount"
+                type="number"
+                placeholder="e.g., 100000"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="date">Expected Date</Label>
+              <Input
+                id="date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            
+            <div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="autoApply">Auto Apply</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Automatically apply to best loan/investment</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="flex items-center space-x-2 mt-1">
+                <Switch
+                  id="autoApply"
+                  checked={autoApply}
+                  onCheckedChange={setAutoApply}
+                />
+                <Label htmlFor="autoApply">
+                  {autoApply ? 'Yes' : 'No'}
+                </Label>
+              </div>
+            </div>
+          </div>
+        </div>
       </CardContent>
+      
+      <CardFooter>
+        <Button 
+          onClick={handleAddInvestment} 
+          disabled={
+            !name || 
+            !amount || 
+            !date ||
+            isNaN(Number(amount))
+          }
+          className="ml-auto flex items-center gap-2"
+        >
+          <PlusCircle className="h-4 w-4" />
+          Add One-Time Investment
+        </Button>
+      </CardFooter>
     </Card>
   );
 };
